@@ -1,10 +1,12 @@
-// const adXpath = `//div[contains(@class, 'story_body_container') and .//span[contains(., "Реклама")]]`
 const adXpath = `//div[contains(@data-pagelet, 'FeedUnit_') and .//span[contains(., "Реклама")]]`
 const adVideoPlayerXpath = `.//div[@aria-label='Смотреть видео']`
-const adImageXpath = `.//a[@role='link']//img` // target="_blank"
+const adImageXpath = `.//a[@role='link']//img`
 
 const testedAttributeName = "facebook-ad-replacer-tested"
-console.log("BEGIN!!!")
+
+var debug = false
+
+console.log("begin ad detector script")
 
 function getImageReplaceUrl(imageUrl) {
     return "https://cdn.pixabay.com/photo/2012/04/23/16/12/click-38743_960_720.png"
@@ -42,60 +44,48 @@ function markNotTestedElement(element) {
     return false
 }
 
-function testVideo(element) {
-    const xpathResult = getSingleElementByXpath(adVideoPlayerXpath, element);
-    if (xpathResult === null) {
+function testMultipleVideo(element) {
+    const videoElements = getElementsByXpath(adVideoPlayerXpath, element);
+    if (videoElements.length === 0) {
         return false
     }
+
+    if (debug) { alert("VIDEO") }
 
     element.style.backgroundColor = "#CC0066"
     return true
 }
 
 function testMultipleImages(element) {
-    const foundImages = getElementsByXpath(adImageXpath, element)
-    if (foundImages.length == 0) {
+    const imageElements = getElementsByXpath(adImageXpath, element)
+    if (imageElements.length === 0) {
         return false
     }
 
-    foundImages.forEach(imageElement => {
-        if (markNotTestedElement(imageElement)) {
-            var imageSource = imageElement.getAttribute("src")
+    if (debug) { alert("IMAGE") }
+
+    imageElements.forEach(imageElement => {
+        var imageSource = imageElement.getAttribute("src")
+        imageElement.setAttribute("src", getImageReplaceUrl(imageSource))
+
+        if (debug) {
             console.log("met new image source: " + imageSource)
-            imageElement.setAttribute("src", getImageReplaceUrl(imageSource))
+            console.log(imageElement)
         }
     })
-    return false
-}
-
-function testImage(element) {
-    const xpathResult = getSingleElementByXpath(adImageXpath, element);
-    if (xpathResult === null) {
-        return false
-    }
-    if (markNotTestedElement(element)) {
-        var imageSource = xpathResult.getAttribute('src')
-        console.log("met new image source: " + imageSource)
-        xpathResult.setAttribute("src", getImageReplaceUrl(imageSource))
-        return true
-    }
-    return false
+    return true
 }
 
 function lookupAds() {
     getElementsByXpath(adXpath, document).forEach(element => {
-        element.style.backgroundColor = "#000000"
-        if (testVideo(element)) {
-            console.log("video: ");
-            console.log(element);
-        }
-        else if (testImage(element)) {
-            console.log("image: ");
-            console.log(element);
+        if (markNotTestedElement(element)) {
+            element.style.backgroundColor = "#000000"
+            if (testMultipleVideo(element)) {}
+            else if (testMultipleImages(element)) {}
         }
     })
 }
 
 var intervalId = window.setInterval(function(){
     lookupAds();
-}, 500);
+}, 5);
