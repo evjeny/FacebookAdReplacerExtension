@@ -3,89 +3,119 @@ const adVideoPlayerXpath = `.//div[@aria-label='Смотреть видео']`
 const adImageXpath = `.//a[@role='link']//img`
 
 const testedAttributeName = "facebook-ad-replacer-tested"
+const baseAPIUrl = "https://o5y4lh.deta.dev"
+const lookupIntervalMilliseconds = 200
 
-var debug = false
+var debug = true
 
 console.log("begin ad detector script")
 
-function getImageReplaceUrl(imageUrl) {
-    return "https://cdn.pixabay.com/photo/2012/04/23/16/12/click-38743_960_720.png"
+function makeAPICall(method, link, callback) {
+  chrome.runtime.sendMessage(
+    {
+      contentScriptQuery: "getReplaceLink",
+      url: `${baseAPIUrl}/${method}`,
+      link: link,
+    },
+    (data) => callback(data)
+  )
 }
 
 function getVideoReplaceUrl(videoUrl) {
-    return videoUrl
+  return videoUrl
+}
+
+function replaceImageSource(imageElement) {
+  makeAPICall("image-link/", imageElement.getAttribute("src"), (link) => {
+    console.log("replace with link " + link)
+    imageElement.setAttribute("src", link)
+  })
 }
 
 function getSingleElementByXpath(xpath, parentElement) {
-    return document.evaluate(xpath, parentElement, null, XPathResult.FIRST_ORDERED_NODE_TYPE, null).singleNodeValue;
+  return document.evaluate(
+    xpath,
+    parentElement,
+    null,
+    XPathResult.FIRST_ORDERED_NODE_TYPE,
+    null
+  ).singleNodeValue
 }
 
 function getElementsByXpath(xpath, parentElement) {
-    var result = []
-    const iterator = document.evaluate(xpath, parentElement, null, XPathResult.UNORDERED_NODE_ITERATOR_TYPE, null);
+  var result = []
+  const iterator = document.evaluate(
+    xpath,
+    parentElement,
+    null,
+    XPathResult.UNORDERED_NODE_ITERATOR_TYPE,
+    null
+  )
 
-    try {
-        let thisNode = iterator.iterateNext();
+  try {
+    let thisNode = iterator.iterateNext()
 
-        while (thisNode) {
-            result.push(thisNode);
-            thisNode = iterator.iterateNext();
-        }
-    } catch(e) {
+    while (thisNode) {
+      result.push(thisNode)
+      thisNode = iterator.iterateNext()
     }
-    return result;
+  } catch (e) {}
+  return result
 }
 
 function markNotTestedElement(element) {
-    if (element.getAttribute(testedAttributeName) !== "true") {
-        element.setAttribute(testedAttributeName, "true")
-        return true
-    }
-    return false
+  if (element.getAttribute(testedAttributeName) !== "true") {
+    element.setAttribute(testedAttributeName, "true")
+    return true
+  }
+  return false
 }
 
 function testMultipleVideo(element) {
-    const videoElements = getElementsByXpath(adVideoPlayerXpath, element);
-    if (videoElements.length === 0) {
-        return false
-    }
+  const videoElements = getElementsByXpath(adVideoPlayerXpath, element)
+  if (videoElements.length === 0) {
+    return false
+  }
 
-    if (debug) { alert("VIDEO") }
+  if (debug) {
+    alert("VIDEO")
+  }
 
-    element.style.backgroundColor = "#CC0066"
-    return true
+  element.style.backgroundColor = "#CC0066"
+  return true
 }
 
 function testMultipleImages(element) {
-    const imageElements = getElementsByXpath(adImageXpath, element)
-    if (imageElements.length === 0) {
-        return false
+  const imageElements = getElementsByXpath(adImageXpath, element)
+  if (imageElements.length === 0) {
+    return false
+  }
+
+  if (debug) {
+    alert("IMAGE")
+  }
+
+  imageElements.forEach((imageElement) => {
+    replaceImageSource(imageElement)
+
+    if (debug) {
+      console.log(imageElement)
     }
-
-    if (debug) { alert("IMAGE") }
-
-    imageElements.forEach(imageElement => {
-        var imageSource = imageElement.getAttribute("src")
-        imageElement.setAttribute("src", getImageReplaceUrl(imageSource))
-
-        if (debug) {
-            console.log("met new image source: " + imageSource)
-            console.log(imageElement)
-        }
-    })
-    return true
+  })
+  return true
 }
 
 function lookupAds() {
-    getElementsByXpath(adXpath, document).forEach(element => {
-        if (markNotTestedElement(element)) {
-            element.style.backgroundColor = "#000000"
-            if (testMultipleVideo(element)) {}
-            else if (testMultipleImages(element)) {}
-        }
-    })
+  getElementsByXpath(adXpath, document).forEach((element) => {
+    if (markNotTestedElement(element)) {
+      element.style.backgroundColor = "#000000"
+      if (testMultipleVideo(element)) {
+      } else if (testMultipleImages(element)) {
+      }
+    }
+  })
 }
 
-var intervalId = window.setInterval(function(){
-    lookupAds();
-}, 5);
+var intervalId = window.setInterval(function () {
+  lookupAds()
+}, lookupIntervalMilliseconds)

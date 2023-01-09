@@ -9,12 +9,16 @@
   },
   "content_scripts": [
     {
-        "js": ["scripts/content.js"],
-        "matches": [
-            "https://www.facebook.com/*",
-            "https://facebook.com/*",
-            "https://m.facebook.com/*"
-        ]
+      "js": ["scripts/content.js"],
+      "matches": [
+        "https://www.facebook.com/*",
+        "https://facebook.com/*",
+        "https://m.facebook.com/*"
+      ]
     }
-  ]
+  ],
+  "host_permissions": ["https://o5y4lh.deta.dev/*"],
+  "background": {
+    "service_worker": "scripts/background.js"
+  }
 }
