@@ -1,8 +1,5 @@
 function handleMessage(request, sender, sendResponse) {
   if (request.contentScriptQuery === "getReplaceLink") {
-    console.log(
-      "got request to url " + request.url + ", with link " + request.link
-    )
     fetch(request.url, {
       method: "POST",
       headers: {

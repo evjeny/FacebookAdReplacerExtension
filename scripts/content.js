@@ -1,12 +1,13 @@
 const adXpath = `//div[contains(@data-pagelet, 'FeedUnit_') and .//span[contains(., "Реклама")]]`
 const adVideoPlayerXpath = `.//div[@aria-label='Смотреть видео']`
 const adImageXpath = `.//a[@role='link']//img`
+const adVideoPreviewXpath = `.//img[@referrerpolicy='origin-when-cross-origin']`
 
 const testedAttributeName = "facebook-ad-replacer-tested"
 const baseAPIUrl = "https://o5y4lh.deta.dev"
-const lookupIntervalMilliseconds = 200
+const lookupIntervalMilliseconds = 10
 
-var debug = true
+var debug = false
 
 console.log("begin ad detector script")
 
@@ -19,17 +20,6 @@ function makeAPICall(method, link, callback) {
     },
     (data) => callback(data)
   )
-}
-
-function getVideoReplaceUrl(videoUrl) {
-  return videoUrl
-}
-
-function replaceImageSource(imageElement) {
-  makeAPICall("image-link/", imageElement.getAttribute("src"), (link) => {
-    console.log("replace with link " + link)
-    imageElement.setAttribute("src", link)
-  })
 }
 
 function getSingleElementByXpath(xpath, parentElement) {
@@ -63,6 +53,32 @@ function getElementsByXpath(xpath, parentElement) {
   return result
 }
 
+function replaceImageSource(imageElement) {
+  let imageSource = imageElement.getAttribute("src")
+  console.log(`got image source: ${imageSource}`)
+
+  makeAPICall("image-link/", imageSource, (link) => {
+    imageElement.setAttribute("src", link)
+  })
+}
+
+function replaceVideoSource(videoElement) {
+  let videoPreviewSrc = getSingleElementByXpath(
+    adVideoPreviewXpath,
+    videoElement
+  ).getAttribute("src")
+
+  console.log(`got video preview: ${videoPreviewSrc}`)
+
+  makeAPICall("video-link/", videoPreviewSrc, (link) => {
+    let newVideoElement = document.createElement("iframe")
+    newVideoElement.setAttribute("src", link)
+
+    videoElement.innerHTML = ""
+    videoElement.appendChild(newVideoElement)
+  })
+}
+
 function markNotTestedElement(element) {
   if (element.getAttribute(testedAttributeName) !== "true") {
     element.setAttribute(testedAttributeName, "true")
@@ -71,9 +87,9 @@ function markNotTestedElement(element) {
   return false
 }
 
-function testMultipleVideo(element) {
-  const videoElements = getElementsByXpath(adVideoPlayerXpath, element)
-  if (videoElements.length === 0) {
+function testVideo(element) {
+  const videoElement = getSingleElementByXpath(adVideoPlayerXpath, element)
+  if (videoElement === null) {
     return false
   }
 
@@ -81,7 +97,8 @@ function testMultipleVideo(element) {
     alert("VIDEO")
   }
 
-  element.style.backgroundColor = "#CC0066"
+  replaceVideoSource(element)
+
   return true
 }
 
@@ -97,10 +114,6 @@ function testMultipleImages(element) {
 
   imageElements.forEach((imageElement) => {
     replaceImageSource(imageElement)
-
-    if (debug) {
-      console.log(imageElement)
-    }
   })
   return true
 }
@@ -109,13 +122,13 @@ function lookupAds() {
   getElementsByXpath(adXpath, document).forEach((element) => {
     if (markNotTestedElement(element)) {
       element.style.backgroundColor = "#000000"
-      if (testMultipleVideo(element)) {
+      if (testVideo(element)) {
       } else if (testMultipleImages(element)) {
       }
     }
   })
 }
 
-var intervalId = window.setInterval(function () {
+window.setInterval(function () {
   lookupAds()
 }, lookupIntervalMilliseconds)
